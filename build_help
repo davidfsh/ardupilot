@@ -1,0 +1,112 @@
+waf [commands] [options]
+
+Main commands (example: ./waf build -j4)
+  all           : builds all programs of all group
+  antennatracker: builds antennatracker programs
+  benchmarks    : builds all programs of benchmarks group
+  bin           : builds all programs of bin group
+  build         : executes the build
+  check         : builds all programs and run tests
+  check-all     : shortcut for `waf check --alltests`
+  clean         : cleans the project
+  configure     : configures the project
+  copter        : builds copter programs
+  dist          : makes a tarball for redistributing the sources
+  distcheck     : checks if the project compiles (tarball from 'dist')
+  distclean     : removes the build directory
+  examples      : builds all programs of examples group
+  install       : installs the targets on the system
+  list          : lists the targets to execute
+  localinstall  : runs install using BLD/install as destdir, where BLD is the build variant directory
+  plane         : builds plane programs
+  rover         : builds rover programs
+  rsync         : runs localinstall and then rsyncs BLD/install with the target system
+  step          : executes tasks in a step-by-step fashion, for debugging
+  sub           : builds sub programs
+  tests         : builds all programs of tests group
+  tools         : builds all programs of tools group
+  uninstall     : removes the targets installed
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -c COLORS, --color=COLORS
+                        whether to use colors (yes/no/auto) [default: auto]
+  -j JOBS, --jobs=JOBS  amount of parallel jobs (8)
+  -k, --keep            continue despite errors (-kk to try harder)
+  -v, --verbose         verbosity level -v -vv or -vvv [default: 0]
+  --zones=ZONES         debugging zones (task_gen, deps, tasks, etc)
+  --notests             Exec no unit tests
+  --alltests            Exec all unit tests
+  --clear-failed        Force failed unit tests to run again next time
+  --testcmd=TESTCMD     Run the unit tests using the test-cmd string example "--test-cmd="valgrind --error-exitcode=1 %s" to run under valgrind
+
+  Configuration options:
+    -o OUT, --out=OUT   build dir for the project
+    -t TOP, --top=TOP   src dir for the project
+    --prefix=PREFIX     installation prefix [default: '/usr/local/']
+    --bindir=BINDIR     bindir
+    --libdir=LIBDIR     libdir
+    --check-cxx-compiler=CHECK_CXX_COMPILER
+                        list of C++ compilers to try [g++ clang++ icpc]
+    --check-c-compiler=CHECK_C_COMPILER
+                        list of C compilers to try [gcc clang icc]
+
+  Build and installation options:
+    -p, --progress      -p: progress bar; -pp: ide output
+    --targets=TARGETS   task generators, e.g. "target1,target2"
+
+  Step options:
+    --files=FILES       files to process, by regexp, e.g. "*/main.c,*/test/main.o"
+
+  Installation and uninstallation options:
+    --destdir=DESTDIR   installation root [default: '']
+    -f, --force         force file installation
+    --distcheck-args=ARGS
+                        arguments to pass to distcheck
+
+  Python Options:
+    --nopyc             Do not install bytecode compiled .pyc files (configuration) [Default:install]
+    --nopyo             Do not install optimised compiled .pyo files (configuration) [Default:install]
+    --python=PYTHON     python binary to be used [Default: /usr/bin/python]
+    --pythondir=PYTHONDIR
+                        Installation path for python modules (py, platform-independent .py and .pyc files)
+    --pythonarchdir=PYTHONARCHDIR
+                        Installation path for python extension (pyext, platform-dependent .so or .dylib files)
+
+  Ardupilot configure options:
+    --board=BOARD       Target board to build, choices are ['aero', 'aerofc-v1', 'bbbmini', 'bebop', 'bhat', 'blue', 'dark', 'disco', 'erleboard',
+                        'erlebrain2', 'linux', 'minlure', 'navio', 'navio2', 'px4-v1', 'px4-v2', 'px4-v3', 'px4-v4', 'px4-v4pro', 'pxf',
+                        'pxfmini', 'raspilot', 'sitl', 'urus', 'zynq'].
+    --debug             Configure as debug variant.
+    --no-autoconfig      Disable autoconfiguration feature. By default, the build system triggers a reconfiguration whenever it thinks it's
+                        necessary - this option disables that.
+    --no-submodule-update
+                         Don't update git submodules. Useful for building with submodules at specific revisions.
+    --rsync-dest=RSYNC_DEST
+                         Destination for the rsync Waf command. It can be passed during configuration in order to save typing.
+    --enable-benchmarks
+                        Enable benchmarks.
+    --disable-lttng     Don't use lttng even if supported by board and dependencies available
+    --disable-libiio    Don't use libiio even if supported by board and dependencies available
+    --disable-tests     Disable compilation and test execution
+    --disable-header-checks
+                        Disable checking of headers
+    --static            Force a static build
+
+  Ardupilot build options:
+    --program-group=PROGRAM_GROUP
+                         Select all programs that go in <PROGRAM_GROUP>/ for the build. Example: `waf --program-group examples` builds all
+                        examples. The special group "all" selects all programs.
+    --upload             Upload applicable targets to a connected device. Not all platforms may support this. Example: `waf copter --upload` means
+                        "build arducopter and upload it to my board".
+    --summary-all        Print build summary for all targets. By default, only information about the first 20 targets will be printed.
+
+  Ardupilot check options:
+    --check-verbose     Output all test programs.
+
+  Ardupilot clean options:
+    --clean-all-sigs     Clean signatures for all tasks. By default, tasks that scan for implicit dependencies (like the compilation tasks) keep
+                        the dependency information across clean commands, so that that information is changed only when really necessary. Also,
+                        some tasks that don't really produce files persist their signature. This option avoids that behavior when cleaning the
+                        build.
