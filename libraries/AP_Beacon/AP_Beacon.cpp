@@ -18,6 +18,7 @@
 #include "AP_Beacon_Pozyx.h"
 #include "AP_Beacon_Marvelmind.h"
 #include "AP_Beacon_SITL.h"
+#include "AP_Beacon_Ultrasound.h"
 
 extern const AP_HAL::HAL &hal;
 
@@ -90,7 +91,7 @@ void AP_Beacon::init(void)
     } else if (_type == AP_BeaconType_Marvelmind) {
         _driver = new AP_Beacon_Marvelmind(*this, serial_manager);
     } else if (_type == AP_BeaconType_Ultrasound) {
-	_driver = new AP_Beacon_Ultrasound(*this);
+	    _driver = new AP_Beacon_Ultrasound(*this);
     }
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     if (_type == AP_BeaconType_SITL) {

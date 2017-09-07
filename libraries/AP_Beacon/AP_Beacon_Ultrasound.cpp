@@ -21,7 +21,7 @@ void AP_Beacon_Ultrasound::update()
 {
 	//Read the ultrasound of last cycle
 	left_echo = _dis_calculation(_echo->read(ECHO_LEFT));
-	right_echo = _dsi_calculation(_echo->read(ECHO_RIGHT));
+	right_echo = _dis_calculation(_echo->read(ECHO_RIGHT));
 	_xbee->printf("1");  // Synchronization the ultrasonic transmitter and the receiver clock
 	_trigger->write(TRIGGER_CHANNEL, 10);
 	
@@ -55,3 +55,4 @@ uint16_t AP_Beacon_Ultrasound::_dis_calculation(uint32_t echo_time)
 {
 	return round(echo_time*340.0/10000);	
 }
+

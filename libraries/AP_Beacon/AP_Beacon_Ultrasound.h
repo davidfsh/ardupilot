@@ -3,9 +3,11 @@
 #include "AP_Beacon_Backend.h"
 
 #define BUFFER_SIZE 5
-#define TRIGGER_CHANNEL CH5
-#define ECHO_LEFT CH6
-#define ECHO_RIGHT CH7
+#define TRIGGER_CHANNEL 5
+#define ECHO_LEFT 6
+#define ECHO_RIGHT 7
+#define AP_BEACON_TIMEOUT 999 // change me when needed
+#define MS 1 // Change me when needed
 
 const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
@@ -41,4 +43,4 @@ private:
 			
 			uint16_t left_echo=0;
 			uint16_t right_echo=0;
-}
+};
