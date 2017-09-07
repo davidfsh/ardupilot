@@ -38,7 +38,8 @@ public:
         AP_BeaconType_None   = 0,
         AP_BeaconType_Pozyx  = 1,
         AP_BeaconType_Marvelmind = 2,
-        AP_BeaconType_SITL   = 10
+        AP_BeaconType_SITL   = 10,
+	AP_BeaconType_Ultrasound = 3
     };
 
     // The AP_BeaconState structure is filled in by the backend driver

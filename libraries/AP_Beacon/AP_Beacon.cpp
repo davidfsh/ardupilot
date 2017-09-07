@@ -27,7 +27,7 @@ const AP_Param::GroupInfo AP_Beacon::var_info[] = {
     // @Param: _TYPE
     // @DisplayName: Beacon based position estimation device type
     // @Description: What type of beacon based position estimation device is connected
-    // @Values: 0:None,1:Pozyx,2:Marvelmind
+    // @Values: 0:None,1:Pozyx,2:Marvelmind,3:Ultrasonic_beacon
     // @User: Advanced
     AP_GROUPINFO("_TYPE",    0, AP_Beacon, _type, 0),
 
@@ -89,6 +89,8 @@ void AP_Beacon::init(void)
         _driver = new AP_Beacon_Pozyx(*this, serial_manager);
     } else if (_type == AP_BeaconType_Marvelmind) {
         _driver = new AP_Beacon_Marvelmind(*this, serial_manager);
+    } else if (_type == AP_BeaconType_Ultrasound) {
+	_driver = new AP_Beacon_Ultrasound(*this);
     }
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     if (_type == AP_BeaconType_SITL) {
