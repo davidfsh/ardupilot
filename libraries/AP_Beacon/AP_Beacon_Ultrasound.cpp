@@ -13,7 +13,7 @@ AP_Beacon_Ultrasound::AP_Beacon_Ultrasound(AP_Beacon &frontend):
 bool AP_Beacon_Ultrasound::healthy()
 {
 	// healthy if we have get a data in the past 25 ms(change the define in AP_Beacon.h)
-	return ((AP_HAL::millis() - last_update_ms) < AP_BEACON_TIMEOUT-MS);
+	return ((AP_HAL::millis() - last_update_ms) < AP_BEACON_TIMEOUT_MS);
 }
 
 // update the state of the sensor
