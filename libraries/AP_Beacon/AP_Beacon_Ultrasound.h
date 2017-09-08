@@ -1,14 +1,14 @@
 #pragma once
 
 #include "AP_Beacon_Backend.h"
+#include <AP_HAL/AP_HAL.h>
 
 #define BUFFER_SIZE 5
 #define TRIGGER_CHANNEL 5
 #define ECHO_LEFT 6
 #define ECHO_RIGHT 7
-#define AP_BEACON_TIMEOUT 999 // change me when needed
 
-const AP_HAL::HAL& hal = AP_HAL::get_HAL();
+extern const AP_HAL::HAL& hal;
 
 class AP_Beacon_Ultrasound : public AP_Beacon_Backend
 {
