@@ -12,24 +12,29 @@ AP_Beacon_Ultrasound::AP_Beacon_Ultrasound(AP_Beacon &frontend):
 // return true if sensor is bascially healthy (we are receiving data)
 bool AP_Beacon_Ultrasound::healthy()
 {
-	// healthy if we have get a data in the past 25 ms(change the define in AP_Beacon.h)
+	// healthy if we have get a data in the past 300ms
 	return ((AP_HAL::millis() - last_update_ms) < AP_BEACON_TIMEOUT_MS);
 }
 
 // update the state of the sensor
 void AP_Beacon_Ultrasound::update()
 {
-	//Read the ultrasound of last cycle
+	//Read the extern ultrasound of last cycle
 	left_echo = _dis_calculation(_echo->read(ECHO_LEFT));
 	right_echo = _dis_calculation(_echo->read(ECHO_RIGHT));
 	_xbee->printf("1");  // Synchronization the ultrasonic transmitter and the receiver clock
 	_trigger->write(TRIGGER_CHANNEL, 10);
 	
+    // Add echos to ring buffers
 	left_ring[index]=left_echo;
 	right_ring[index]=right_echo;
 	index = (index+1)%BUFFER_SIZE;
+
+    // Increase size of buffer as initial elements are added
 	if (size_of_ring<BUFFER_SIZE) size_of_ring++;
-		
+    
+    //TODO: Shi Hao, could you comment this section to make it a bit
+    //clearer? I don't know what this for loop is doing.
 	int temp_sum_left=0; int temp_sum_right=0; int shift_index=0;
 	for (int i=0; i<size_of_ring; i++)
 	{
@@ -46,6 +51,10 @@ void AP_Beacon_Ultrasound::update()
 	} 
 	last_left_data = temp_sum_left / size_of_ring;
 	last_right_data = temp_sum_right / size_of_ring;
+
+    // TODO: Need to use the set_vehicle_position function (AP_Beacon_Backend)
+    // to set the vehicle position based on the data received.
+    // Check AP_Beacon_Pozyx.cpp for an example.
 		
 	last_update_ms = AP_HAL::millis();
 }
