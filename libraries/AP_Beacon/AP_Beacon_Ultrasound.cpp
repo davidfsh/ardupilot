@@ -33,8 +33,6 @@ void AP_Beacon_Ultrasound::update()
     // Increase size of buffer as initial elements are added
 	if (size_of_ring<BUFFER_SIZE) size_of_ring++;
     
-    //TODO: Shi Hao, could you comment this section to make it a bit
-    //clearer? I don't know what this for loop is doing
     //This is a ring buffer to filter the reading of ultrasonic sensor a little bit. It seems that I do some silly processing here. My original idea is to sum up the valid numbers in the ring buffer from the oldest value. However, it turns out to be both wrong and unnecassary. 
 	int temp_sum_left=0; int temp_sum_right=0; //int shift_index=0;
 	for (int i=0; i<size_of_ring; i++)
@@ -55,14 +53,31 @@ void AP_Beacon_Ultrasound::update()
 
     // TODO: Need to use the set_vehicle_position function (AP_Beacon_Backend)
     // to set the vehicle position based on the data received.
-    // Check AP_Beacon_Pozyx.cpp for an example.
-		
+    // Check AP_Beacon_Pozyx.cpp for an example
+    
+    // Vehicles X Y Z Coordinates in Meters
+    // O O  x    
+    //  X   + y
+    // O O  (z coming out of the screen)
+    // TODO
+    int32_t vehicle_x = 0;
+    int32_t vehicle_y = 0;
+    int32_t vehicle_z = 0;
+    Vector3f veh_pos(Vector3f(vehicle_x / 1000.0f, vehicle_y / 1000.0f, -vehicle_z / 1000.0f));
+
+    // Set position in meters, position accuracy is 1.
+    // NOTE: This might be as simple as changing the y position slightly
+    // as the yaw (twist) is changed automatically w/ this function
+    set_vehicle_distance(veh_pos, 1);
+
 	last_update_ms = AP_HAL::millis();
 }
 
 // Convert PWM echo signal into distance
+// returns distance in m?
 uint16_t AP_Beacon_Ultrasound::_dis_calculation(uint32_t echo_time)
 {
-	return round(echo_time*340.0/10000);	
+	// distance(cm) = .0347cm/us * echo_time(us)
+    return round(echo_time*340.0/10000);	
 }
 
