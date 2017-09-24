@@ -954,6 +954,8 @@ private:
     void parachute_check();
     void parachute_release();
     void parachute_manual_release();
+    bool ultrasonic_init(bool ignore_checks);
+    void ultrasonic_run();
 
     // support for AP_Avoidance custom flight mode, AVOID_ADSB
     bool avoid_adsb_init(bool ignore_checks);

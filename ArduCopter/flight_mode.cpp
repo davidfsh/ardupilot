@@ -81,6 +81,10 @@ bool Copter::set_mode(control_mode_t mode, mode_reason_t reason)
             success = flip_init(ignore_checks);
             break;
 
+        case ULTRASONIC:
+            success = ultrasonic_init(ignore_checks);
+            break;
+
 #if AUTOTUNE_ENABLED == ENABLED
         case AUTOTUNE:
             success = autotune_init(ignore_checks);
@@ -216,6 +220,10 @@ void Copter::update_flight_mode()
 
         case FLIP:
             flip_run();
+            break;
+
+        case ULTRASONIC:
+            ultrasonic_run();
             break;
 
 #if AUTOTUNE_ENABLED == ENABLED

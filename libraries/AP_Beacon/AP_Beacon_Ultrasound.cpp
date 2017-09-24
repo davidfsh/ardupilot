@@ -12,7 +12,9 @@ AP_Beacon_Ultrasound::AP_Beacon_Ultrasound(AP_Beacon &frontend):
 // return true if sensor is bascially healthy (we are receiving data)
 bool AP_Beacon_Ultrasound::healthy()
 {
-	// healthy if we have get a data in the past 300ms, I am not sure whether we need to shrink this time check threshold, since the period of ultraonic sensor update is 25ms.
+	// healthy if we have get a data in the past 300ms
+    // I am not sure whether we need to shrink this time check threshold,
+    // since the period of ultraonic sensor update is 25ms.
 	return ((AP_HAL::millis() - last_update_ms) < AP_BEACON_TIMEOUT_MS);
 }
 
@@ -32,49 +34,41 @@ void AP_Beacon_Ultrasound::update()
 
     // Increase size of buffer as initial elements are added
 	if (size_of_ring<BUFFER_SIZE) size_of_ring++;
-    
-    //This is a ring buffer to filter the reading of ultrasonic sensor a little bit. It seems that I do some silly processing here. My original idea is to sum up the valid numbers in the ring buffer from the oldest value. However, it turns out to be both wrong and unnecassary. 
-	int temp_sum_left=0; int temp_sum_right=0; //int shift_index=0;
+   
+    // Read ring buffers to average values to get a distance calculation that is
+    // less susceptible ot change
+	int temp_sum_left=0; int temp_sum_right=0; 
 	for (int i=0; i<size_of_ring; i++)
 	{
-		/*if (index>=i) 
-		{
-			shift_index=index-i;
-		}
-		else 
-		{
-			shift_index=index+BUFFER_SIZE-i;
-		}*/
 		temp_sum_left+=left_ring[i];
 		temp_sum_right+=right_ring[i];
 	} 
-	last_left_data = temp_sum_left / size_of_ring;
-	last_right_data = temp_sum_right / size_of_ring;
+	avg_left_data = temp_sum_left / size_of_ring;
+	avg_right_data = temp_sum_right / size_of_ring;
 
-    // TODO: Need to use the set_vehicle_position function (AP_Beacon_Backend)
-    // to set the vehicle position based on the data received.
-    // Check AP_Beacon_Pozyx.cpp for an example
-    
     // Vehicles X Y Z Coordinates in Meters
     // O O  x    
     //  X   + y
     // O O  (z coming out of the screen)
-    // TODO
-    int32_t vehicle_x = 0;
-    int32_t vehicle_y = 0;
-    int32_t vehicle_z = 0;
-    Vector3f veh_pos(Vector3f(vehicle_x / 1000.0f, vehicle_y / 1000.0f, -vehicle_z / 1000.0f));
+    if (DRONE_DISTANCE_MIN > avg_left_data || avg_left_data > DRONE_DISTANCE_MAX) {
+        vehicle_x = 0;
+    }
+    else {
+        vehicle_x = avg_left_data;
+    }
+
+    // Vehicle position vector, converting cm to m
+    Vector3f veh_pos(Vector3f(vehicle_x / 100.0f, vehicle_y / 100.0f, -vehicle_z / 100.0f));
 
     // Set position in meters, position accuracy is 1.
-    // NOTE: This might be as simple as changing the y position slightly
-    // as the yaw (twist) is changed automatically w/ this function
-    set_vehicle_distance(veh_pos, 1);
+    // Note that yaw (twist) is corrected for automatically
+    set_vehicle_position(veh_pos, 1);
 
 	last_update_ms = AP_HAL::millis();
 }
 
 // Convert PWM echo signal into distance
-// returns distance in m?
+// returns distance in cm
 uint16_t AP_Beacon_Ultrasound::_dis_calculation(uint32_t echo_time)
 {
 	// distance(cm) = .0347cm/us * echo_time(us)

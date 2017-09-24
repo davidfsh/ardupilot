@@ -90,7 +90,7 @@ void AP_Beacon::init(void)
         _driver = new AP_Beacon_Pozyx(*this, serial_manager);
     } else if (_type == AP_BeaconType_Marvelmind) {
         _driver = new AP_Beacon_Marvelmind(*this, serial_manager);
-    } else if (_type == AP_BeaconType_Ultrasound) {
+    } else if (_type == AP_BeaconType_Ultrasound) { // NEW: This was added
 	    _driver = new AP_Beacon_Ultrasound(*this);
     }
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
