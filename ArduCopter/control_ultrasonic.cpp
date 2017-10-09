@@ -1,8 +1,10 @@
 #include "Copter.h"
 #include <utility>
 #include <time.h>
-#define LEFT_ECHO 7
-#define RIGHT_ECHO 8
+#include <iostream>
+#define LEFT_ECHO 57  // (32 * 1) + 25 for GPIO 1_25
+#define RIGHT_ECHO 49 // (32 * 1) + 17 for GPIO 1_17
+#define TRIGGER 98    // (32 * 3) + 20 for GPIO 3_20
 #define POS_DEG 300 // Centidegrees, so this is 3 degrees
 #define NEG_DEG -300
 #define DISTANCE 150 // Distance to keep drone from beacon in cm 
@@ -14,11 +16,20 @@ pair<int, int> echo_val(0, 0);                    // Values for the echo pins <l
 pair<int, int> echo_start(1, 1);                  // Flag to determine if you should start or end a timer
 pair<uint32_t, uint32_t> timer_ns(0, 0);          // The raw output of each timer in ns
 struct timespec l_start, l_stop, r_start, r_stop; // Used to get time from timers
+
+// Trigger timers
+struct timespec trigger_start, trigger_end;
 AP_HAL::GPIO *_left_echo=hal.gpio;
 AP_HAL::GPIO *_right_echo=hal.gpio;
+AP_HAL::GPIO* _trigger=hal.gpio;
+int trigger_start_flag = 0;
 
 // Helper functions
-void run_timers() {
+void run_left_timers() {
+
+    // FIXME: Remove me when you're done debugging
+    cout << "RUN LEFT TIMER: " << echo_val.first << endl;
+
     // LEFT ECHO VALUE WRITE
     if (echo_val.first && echo_start.first) {        
         echo_start.first = 0;
@@ -35,6 +46,13 @@ void run_timers() {
         // Write the timer value into a global variable
         timer_ns.first = (uint32_t)(l_stop.tv_nsec - l_start.tv_nsec);
     }
+
+
+}
+
+void run_right_timers() {
+
+    cout << "RUN RIGHT TIMER: " << echo_val.second << endl;
 
     // RIGHT ECHO VALUE WRITE
     if (echo_val.second && echo_start.second) {        
@@ -66,9 +84,14 @@ bool Copter::ultrasonic_init(bool ignore_checks)
     // Initialize GPIO pins
     _left_echo->init();
     _right_echo->init();
+    _trigger->init();
 
     _left_echo->pinMode(LEFT_ECHO, HAL_GPIO_INPUT); 
     _right_echo->pinMode(RIGHT_ECHO, HAL_GPIO_INPUT);
+    _trigger->pinMode(TRIGGER, HAL_GPIO_OUTPUT);
+
+    _left_echo->attach_interrupt(LEFT_ECHO, run_left_timers, HAL_GPIO_INTERRUPT_HIGH);
+    _right_echo->attach_interrupt(RIGHT_ECHO, run_right_timers, HAL_GPIO_INTERRUPT_HIGH);
 
 
 #if FRAME_CONFIG == HELI_FRAME
@@ -115,10 +138,24 @@ void Copter::ultrasonic_run()
 
 
     // BEGINNING OF ADDED CODE
-    echo_val.first = _left_echo->read(LEFT_ECHO);
-    echo_val.second = _right_echo->read(RIGHT_ECHO);
+    if (trigger_start_flag == 0) {
+        clock_gettime(CLOCK_REALTIME, &trigger_start);
+        if ((uint32_t)(l_start.tv_nsec - l_stop.tv_nsec) > 50500) { // Suggests over a 60ms measurement cycle.
+            cout << "TRIGGER HIGH" << endl;
+            _trigger->write(TRIGGER, 1);
+            trigger_start_flag = 1;
+        }
+        
+    }
+    else {
+        clock_gettime(CLOCK_REALTIME, &trigger_end);
+        if ((uint32_t)(l_stop.tv_nsec - l_start.tv_nsec) > 10000) {
+            cout << "TRIGGER LOW" << endl;
+            _trigger->write(TRIGGER, 0);
+            trigger_start_flag = 0;
+        }
+    }
 
-    run_timers();
 
     // Calculate what direction the drone should be moving based on timer values.
     // As of now, just move at a constant rate until it faces the US sensor
@@ -150,7 +187,7 @@ void Copter::ultrasonic_run()
         } 
     }
     // END OF ADDED CODE
-
+    
 
 
 
