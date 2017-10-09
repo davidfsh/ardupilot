@@ -140,7 +140,7 @@ void Copter::ultrasonic_run()
     // BEGINNING OF ADDED CODE
     if (trigger_start_flag == 0) {
         clock_gettime(CLOCK_REALTIME, &trigger_start);
-        if ((uint32_t)(l_start.tv_nsec - l_stop.tv_nsec) > 50500) { // Suggests over a 60ms measurement cycle.
+        if ((uint32_t)(trigger_start.tv_nsec - trigger_end.tv_nsec) > 50500) { // Suggests over a 60ms measurement cycle.
             cout << "TRIGGER HIGH" << endl;
             _trigger->write(TRIGGER, 1);
             trigger_start_flag = 1;
@@ -149,7 +149,7 @@ void Copter::ultrasonic_run()
     }
     else {
         clock_gettime(CLOCK_REALTIME, &trigger_end);
-        if ((uint32_t)(l_stop.tv_nsec - l_start.tv_nsec) > 10000) {
+        if ((uint32_t)(trigger_end.tv_nsec - trigger_end.tv_nsec) > 10000) {
             cout << "TRIGGER LOW" << endl;
             _trigger->write(TRIGGER, 0);
             trigger_start_flag = 0;
