@@ -1,12 +1,21 @@
 #include "Copter.h"
 #include <utility>
 #include <time.h>
+#include <iostream>
+
+// Not sure if these are necessary, but it worked with them...
+#include <AP_HAL_Linux/GPIO_BBB.h>
+#include <AP_Common/AP_Common.h>
+#include <AP_HAL_Linux/AP_HAL_Linux.h>
+#include <AP_Menu/AP_Menu.h>
+
 #define LEFT_ECHO 7
 #define RIGHT_ECHO 8
 #define POS_DEG 300 // Centidegrees, so this is 3 degrees
 #define NEG_DEG -300
 #define DISTANCE 150 // Distance to keep drone from beacon in cm 
 #define DIST_VAR 20  // Distance variation
+#define TIMER_VAR 50 // Timer variation
 
 using namespace std;
 
@@ -14,8 +23,6 @@ pair<int, int> echo_val(0, 0);                    // Values for the echo pins <l
 pair<int, int> echo_start(1, 1);                  // Flag to determine if you should start or end a timer
 pair<uint32_t, uint32_t> timer_ns(0, 0);          // The raw output of each timer in ns
 struct timespec l_start, l_stop, r_start, r_stop; // Used to get time from timers
-AP_HAL::GPIO *_left_echo=hal.gpio;
-AP_HAL::GPIO *_right_echo=hal.gpio;
 
 // Helper functions
 void run_timers() {
@@ -64,11 +71,11 @@ bool Copter::ultrasonic_init(bool ignore_checks)
 {
     
     // Initialize GPIO pins
-    _left_echo->init();
-    _right_echo->init();
+    hal.gpio->init();
+    hal.gpio->init();
 
-    _left_echo->pinMode(LEFT_ECHO, HAL_GPIO_INPUT); 
-    _right_echo->pinMode(RIGHT_ECHO, HAL_GPIO_INPUT);
+    hal.gpio->pinMode(LEFT_ECHO, HAL_GPIO_INPUT); 
+    hal.gpio->pinMode(RIGHT_ECHO, HAL_GPIO_INPUT);
 
 
 #if FRAME_CONFIG == HELI_FRAME
@@ -115,21 +122,32 @@ void Copter::ultrasonic_run()
 
 
     // BEGINNING OF ADDED CODE
-    echo_val.first = _left_echo->read(LEFT_ECHO);
-    echo_val.second = _right_echo->read(RIGHT_ECHO);
+    echo_val.first = hal.gpio->read(LEFT_ECHO);
+    echo_val.second = hal.gpio->read(RIGHT_ECHO);
+    
+    cout << endl;
+    cout << "After reading, echo vals are now " << echo_val.first << " " << echo_val.second << endl;
 
     run_timers();
 
     // Calculate what direction the drone should be moving based on timer values.
     // As of now, just move at a constant rate until it faces the US sensor
     float target_yaw_rate;
-
-    if (timer_ns.first > timer_ns.second)
+    uint32_t first = timer_ns.first;
+    uint32_t second = timer_ns.second;
+    if (first > second) {
+        cout << "Target Yaw Rate is now POSITIVE" << endl;
+        cout << first << " " << second << endl;
         target_yaw_rate = POS_DEG; // If left echo > right echo, needs to bring left sensor closer, i.e. cw
-    else if (timer_ns.first < timer_ns.second)
+    }
+    else if (first < second) {
+        cout << "Target Yaw Rate is now NEGATIVE" << endl;
+        cout << first << " " << second << endl;
         target_yaw_rate = NEG_DEG; // If right echo > left echo, needs to bring right sensor closer, i.e. ccw
+    }
 
     else {
+        cout << "Target Yaw Rate is now ZERO" << endl;
         target_yaw_rate = 0;  
 
         // If the echos are within a reasonable distance from each other, 
@@ -143,9 +161,11 @@ void Copter::ultrasonic_run()
         uint16_t distance = (timer_us * 340) / 10000;
 
         if (distance < (DISTANCE - DIST_VAR)) {
+            cout << "Target Pitch is now NEGATIVE" << endl;
             target_pitch = NEG_DEG;
         }
         else if (distance > (DISTANCE + DIST_VAR)) {
+            cout << "Target Pitch is now POSITIVE" << endl;
             target_pitch = POS_DEG;
         } 
     }
