@@ -2,9 +2,14 @@
 #include <utility>
 #include <time.h>
 #include <iostream>
+#include <AP_HAL_Linux/GPIO_BBB.h>
+#include <AP_Common/AP_Common.h>
+#include <AP_HAL_Linux/AP_HAL_Linux.h>
+#include <AP_Menu/AP_Menu.h>
+
 #define LEFT_ECHO 57  // (32 * 1) + 25 for GPIO 1_25
 #define RIGHT_ECHO 49 // (32 * 1) + 17 for GPIO 1_17
-#define TRIGGER 98    // (32 * 3) + 20 for GPIO 3_20
+#define TRIGGER 98    // (32 * 3) + 2 for GPIO 3_2
 #define POS_DEG 300 // Centidegrees, so this is 3 degrees
 #define NEG_DEG -300
 #define DISTANCE 150 // Distance to keep drone from beacon in cm 
@@ -19,9 +24,6 @@ struct timespec l_start, l_stop, r_start, r_stop; // Used to get time from timer
 
 // Trigger timers
 struct timespec trigger_start, trigger_end;
-AP_HAL::GPIO *_left_echo=hal.gpio;
-AP_HAL::GPIO *_right_echo=hal.gpio;
-AP_HAL::GPIO* _trigger=hal.gpio;
 int trigger_start_flag = 0;
 
 // Helper functions
@@ -82,16 +84,14 @@ bool Copter::ultrasonic_init(bool ignore_checks)
 {
     
     // Initialize GPIO pins
-    _left_echo->init();
-    _right_echo->init();
-    _trigger->init();
+    hal.gpio->init();
 
-    _left_echo->pinMode(LEFT_ECHO, HAL_GPIO_INPUT); 
-    _right_echo->pinMode(RIGHT_ECHO, HAL_GPIO_INPUT);
-    _trigger->pinMode(TRIGGER, HAL_GPIO_OUTPUT);
+    hal.gpio->pinMode(LEFT_ECHO, HAL_GPIO_INPUT); 
+    hal.gpio->pinMode(RIGHT_ECHO, HAL_GPIO_INPUT);
+    hal.gpio->pinMode(TRIGGER, HAL_GPIO_OUTPUT);
 
-    _left_echo->attach_interrupt(LEFT_ECHO, run_left_timers, HAL_GPIO_INTERRUPT_HIGH);
-    _right_echo->attach_interrupt(RIGHT_ECHO, run_right_timers, HAL_GPIO_INTERRUPT_HIGH);
+    hal.gpio->attach_interrupt(LEFT_ECHO, run_left_timers, HAL_GPIO_INTERRUPT_HIGH);
+    hal.gpio->attach_interrupt(RIGHT_ECHO, run_right_timers, HAL_GPIO_INTERRUPT_HIGH);
 
 
 #if FRAME_CONFIG == HELI_FRAME
@@ -141,17 +141,15 @@ void Copter::ultrasonic_run()
     if (trigger_start_flag == 0) {
         clock_gettime(CLOCK_REALTIME, &trigger_start);
         if ((uint32_t)(trigger_start.tv_nsec - trigger_end.tv_nsec) > 50500) { // Suggests over a 60ms measurement cycle.
-            cout << "TRIGGER HIGH" << endl;
-            _trigger->write(TRIGGER, 1);
+            hal.gpio->write(TRIGGER, 1);
             trigger_start_flag = 1;
         }
         
     }
     else {
         clock_gettime(CLOCK_REALTIME, &trigger_end);
-        if ((uint32_t)(trigger_end.tv_nsec - trigger_end.tv_nsec) > 10000) {
-            cout << "TRIGGER LOW" << endl;
-            _trigger->write(TRIGGER, 0);
+        if ((uint32_t)(trigger_start.tv_nsec - trigger_end.tv_nsec) > 10000) {
+            hal.gpio->write(TRIGGER, 0);
             trigger_start_flag = 0;
         }
     }
