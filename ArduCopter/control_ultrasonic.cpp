@@ -7,13 +7,7 @@
 #include <AP_HAL_Linux/AP_HAL_Linux.h>
 #include <AP_Menu/AP_Menu.h>
 
-#define LEFT_ECHO 57  // (32 * 1) + 25 for GPIO 1_25
-#define RIGHT_ECHO 49 // (32 * 1) + 17 for GPIO 1_17
-#define TRIGGER 98    // (32 * 3) + 2 for GPIO 3_2
-#define POS_DEG 300 // Centidegrees, so this is 3 degrees
-#define NEG_DEG -300
-#define DISTANCE 150 // Distance to keep drone from beacon in cm 
-#define DIST_VAR 20  // Distance variation
+
 
 using namespace std;
 
@@ -27,51 +21,43 @@ struct timespec trigger_start, trigger_end;
 int trigger_start_flag = 0;
 
 // Helper functions
-void run_left_timers() {
+void start_left_timer() {
 
     // FIXME: Remove me when you're done debugging
     cout << "RUN LEFT TIMER: " << echo_val.first << endl;
 
-    // LEFT ECHO VALUE WRITE
-    if (echo_val.first && echo_start.first) {        
-        echo_start.first = 0;
-
-        // Get start of timer
-        clock_gettime(CLOCK_REALTIME, &l_start);
-    }
-    else if (!echo_val.first && !echo_start.first) {
-        echo_start.first = 1;
-
-        // Get end of timer
-        clock_gettime(CLOCK_REALTIME, &l_stop);
-
-        // Write the timer value into a global variable
-        timer_ns.first = (uint32_t)(l_stop.tv_nsec - l_start.tv_nsec);
-    }
-
+    // Get start of timer
+    clock_gettime(CLOCK_REALTIME, &l_start);
+    
 
 }
 
-void run_right_timers() {
+void end_left_timer() {
+
+    cout << "END LEFT TIMER" << endl;
+    // Get end of timer
+    clock_gettime(CLOCK_REALTIME, &l_stop);
+
+    // Write the timer value into a global variable
+    timer_ns.first = (uint32_t)(l_stop.tv_nsec - l_start.tv_nsec);
+}
+
+void start_right_timer() {
 
     cout << "RUN RIGHT TIMER: " << echo_val.second << endl;
 
-    // RIGHT ECHO VALUE WRITE
-    if (echo_val.second && echo_start.second) {        
-        echo_start.second = 0;
+    // Get start of timer
+    clock_gettime(CLOCK_REALTIME, &r_start);
 
-        // Get start of timer
-        clock_gettime(CLOCK_REALTIME, &r_start);
-    }
-    else if (!echo_val.second && !echo_start.second) {
-        echo_start.second = 1;
+}
 
-        // Get end of timer
-        clock_gettime(CLOCK_REALTIME, &r_stop);
+void end_right_timer() {
+    cout << "END RIGHT TIMER" << endl;
+    // Get end of timer
+    clock_gettime(CLOCK_REALTIME, &r_stop);
 
-        // Write the timer value into a global variable
-        timer_ns.second = (uint32_t)(r_stop.tv_nsec - r_start.tv_nsec);
-    }
+    // Write the timer value into a global variable
+    timer_ns.second = (uint32_t)(r_stop.tv_nsec - r_start.tv_nsec);
 }
 
 
@@ -90,8 +76,10 @@ bool Copter::ultrasonic_init(bool ignore_checks)
     hal.gpio->pinMode(RIGHT_ECHO, HAL_GPIO_INPUT);
     hal.gpio->pinMode(TRIGGER, HAL_GPIO_OUTPUT);
 
-    hal.gpio->attach_interrupt(LEFT_ECHO, run_left_timers, HAL_GPIO_INTERRUPT_HIGH);
-    hal.gpio->attach_interrupt(RIGHT_ECHO, run_right_timers, HAL_GPIO_INTERRUPT_HIGH);
+    hal.gpio->attach_interrupt(LEFT_ECHO, start_left_timer, HAL_GPIO_INTERRUPT_RISING);
+    hal.gpio->attach_interrupt(LEFT_ECHO, end_left_timer, HAL_GPIO_INTERRUPT_FALLING);
+    hal.gpio->attach_interrupt(RIGHT_ECHO, start_right_timer, HAL_GPIO_INTERRUPT_RISING);
+    hal.gpio->attach_interrupt(RIGHT_ECHO, end_right_timer, HAL_GPIO_INTERRUPT_FALLING);
 
 
 #if FRAME_CONFIG == HELI_FRAME
@@ -121,9 +109,10 @@ bool Copter::ultrasonic_init(bool ignore_checks)
 // should be called at 100hz or more
 void Copter::ultrasonic_run()
 {
+    cout << hal.gpio->read(LEFT_ECHO) << endl;
+    cout << hal.gpio->read(RIGHT_ECHO) << endl;
     AltHoldModeState althold_state;
     float takeoff_climb_rate = 0.0f;
-
     // initialize vertical speeds and acceleration
     pos_control->set_speed_z(-g.pilot_velocity_z_max, g.pilot_velocity_z_max);
     pos_control->set_accel_z(g.pilot_accel_z);
@@ -140,29 +129,48 @@ void Copter::ultrasonic_run()
     // BEGINNING OF ADDED CODE
     if (trigger_start_flag == 0) {
         clock_gettime(CLOCK_REALTIME, &trigger_start);
-        if ((uint32_t)(trigger_start.tv_nsec - trigger_end.tv_nsec) > 50500) { // Suggests over a 60ms measurement cycle.
+        if ((uint32_t)(trigger_start.tv_nsec - trigger_end.tv_nsec) > 50000000) { // Suggests over a 50ms measurement cycle.
             hal.gpio->write(TRIGGER, 1);
             trigger_start_flag = 1;
+            clock_gettime(CLOCK_REALTIME, &trigger_start);
         }
         
     }
     else {
         clock_gettime(CLOCK_REALTIME, &trigger_end);
-        if ((uint32_t)(trigger_start.tv_nsec - trigger_end.tv_nsec) > 10000) {
+        if ((uint32_t)(trigger_end.tv_nsec - trigger_start.tv_nsec) > 10000) {
             hal.gpio->write(TRIGGER, 0);
             trigger_start_flag = 0;
+            clock_gettime(CLOCK_REALTIME, &trigger_end);
         }
     }
 
+    // If any of the timers' echo values are >= 45ms, then the beacon has been disconnected.
+    // Drop throttle and exit.
+    if (timer_ns.first >= 45000000 || timer_ns.second >= 45000000) {
+        motors->set_desired_spool_state(AP_Motors::DESIRED_SPIN_WHEN_ARMED);
+        // multicopters do not stabilize roll/pitch/yaw when disarmed
+        attitude_control->set_throttle_out_unstabilized(100,true,g.throttle_filt); // TODO: Ensure that this will not drop the drone
+
+        // disarm when the landing detector says we've landed
+        if (ap.land_complete) {
+            init_disarm_motors();
+        }
+        return;
+    }
 
     // Calculate what direction the drone should be moving based on timer values.
     // As of now, just move at a constant rate until it faces the US sensor
     float target_yaw_rate;
 
-    if (timer_ns.first > timer_ns.second)
+    if (timer_ns.first > timer_ns.second) {
+        cout << "TARGET YAW RATE POSITIVE" << endl;
         target_yaw_rate = POS_DEG; // If left echo > right echo, needs to bring left sensor closer, i.e. cw
-    else if (timer_ns.first < timer_ns.second)
+    }
+    else if (timer_ns.first < timer_ns.second) {
+        cout << "TARGET YAW RATE NEGATIVE" << endl;
         target_yaw_rate = NEG_DEG; // If right echo > left echo, needs to bring right sensor closer, i.e. ccw
+    }
 
     else {
         target_yaw_rate = 0;  
@@ -175,7 +183,8 @@ void Copter::ultrasonic_run()
         uint32_t timer_us = timer_ns.first / 1000;
         
         // distance(cm) = 0.0347cm/us * echo_time(us)
-        uint16_t distance = (timer_us * 340) / 10000;
+        // Subtract 4ms (4000us) for the consistent delay
+        uint16_t distance = ((timer_us - 4000) * 340) / 10000;
 
         if (distance < (DISTANCE - DIST_VAR)) {
             target_pitch = NEG_DEG;

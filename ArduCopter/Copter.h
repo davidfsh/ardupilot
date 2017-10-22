@@ -16,7 +16,37 @@
 /*
   This is the main Copter class
  */
+#define LEFT_ECHO 57  // (32 * 1) + 25 for GPIO 1_25
+#define RIGHT_ECHO 49 // (32 * 1) + 17 for GPIO 1_17
+#define TRIGGER 116   // (32 * 3) + 20 for GPIO 3_20
+#define POS_DEG 300 // Centidegrees, so this is 3 degrees
+#define NEG_DEG -300
+#define DISTANCE 150 // Distance to keep drone from beacon in cm 
+#define DIST_VAR 20  // Distance variation
 
+
+#define SYSFS_GPIO_DIR "/sys/class/gpio"
+#define POLL_TIMEOUT (3 * 1000) /* 3 seconds */
+#define MAX_BUF 64
+#define SYSFS_OMAP_MUX_DIR "/sys/kernel/debug/omap_mux/"
+
+enum PIN_DIRECTION{
+	INPUT_PIN=0,
+	OUTPUT_PIN=1
+};
+
+enum PIN_VALUE{
+	LOW=0,
+	HIGH=1
+};
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
 ////////////////////////////////////////////////////////////////////////////////
 // Header includes
 ////////////////////////////////////////////////////////////////////////////////
