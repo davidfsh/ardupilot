@@ -19,24 +19,22 @@ struct timespec l_start, l_stop, r_start, r_stop; // Used to get time from timer
 // Trigger timers
 struct timespec trigger_start, trigger_end;
 int trigger_start_flag = 0;
+int left_timer_start_flag = 0;
+int right_timer_start_flag = 0; 
 
 // Helper functions
 void start_left_timer() {
 
-    // FIXME: Remove me when you're done debugging
-    cout << "RUN LEFT TIMER: " << echo_val.first << endl;
-
     // Get start of timer
-    clock_gettime(CLOCK_REALTIME, &l_start);
+    clock_gettime(CLOCK_MONOTONIC, &l_start);
     
 
 }
 
 void end_left_timer() {
 
-    cout << "END LEFT TIMER" << endl;
     // Get end of timer
-    clock_gettime(CLOCK_REALTIME, &l_stop);
+    clock_gettime(CLOCK_MONOTONIC, &l_stop);
 
     // Write the timer value into a global variable
     timer_ns.first = (uint32_t)(l_stop.tv_nsec - l_start.tv_nsec);
@@ -44,7 +42,6 @@ void end_left_timer() {
 
 void start_right_timer() {
 
-    cout << "RUN RIGHT TIMER: " << echo_val.second << endl;
 
     // Get start of timer
     clock_gettime(CLOCK_REALTIME, &r_start);
@@ -52,7 +49,7 @@ void start_right_timer() {
 }
 
 void end_right_timer() {
-    cout << "END RIGHT TIMER" << endl;
+
     // Get end of timer
     clock_gettime(CLOCK_REALTIME, &r_stop);
 
@@ -75,11 +72,6 @@ bool Copter::ultrasonic_init(bool ignore_checks)
     hal.gpio->pinMode(LEFT_ECHO, HAL_GPIO_INPUT); 
     hal.gpio->pinMode(RIGHT_ECHO, HAL_GPIO_INPUT);
     hal.gpio->pinMode(TRIGGER, HAL_GPIO_OUTPUT);
-
-    hal.gpio->attach_interrupt(LEFT_ECHO, start_left_timer, HAL_GPIO_INTERRUPT_RISING);
-    hal.gpio->attach_interrupt(LEFT_ECHO, end_left_timer, HAL_GPIO_INTERRUPT_FALLING);
-    hal.gpio->attach_interrupt(RIGHT_ECHO, start_right_timer, HAL_GPIO_INTERRUPT_RISING);
-    hal.gpio->attach_interrupt(RIGHT_ECHO, end_right_timer, HAL_GPIO_INTERRUPT_FALLING);
 
 
 #if FRAME_CONFIG == HELI_FRAME
@@ -109,8 +101,23 @@ bool Copter::ultrasonic_init(bool ignore_checks)
 // should be called at 100hz or more
 void Copter::ultrasonic_run()
 {
-    cout << hal.gpio->read(LEFT_ECHO) << endl;
-    cout << hal.gpio->read(RIGHT_ECHO) << endl;
+    if (hal.gpio->read(LEFT_ECHO) && left_timer_start_flag == 0) {
+	left_timer_start_flag = 1;
+	start_left_timer();
+    }
+    else if (!hal.gpio->read(LEFT_ECHO) && left_timer_start_flag == 1) {
+	left_timer_start_flag = 0;
+	end_left_timer();
+    }
+
+    if (hal.gpio->read(RIGHT_ECHO) && right_timer_start_flag == 0) {
+	right_timer_start_flag = 1;
+	start_right_timer();
+    }
+    else if (!hal.gpio->read(RIGHT_ECHO) && right_timer_start_flag == 1) {
+	right_timer_start_flag = 0;
+	end_right_timer();
+    }
     AltHoldModeState althold_state;
     float takeoff_climb_rate = 0.0f;
     // initialize vertical speeds and acceleration
@@ -129,8 +136,10 @@ void Copter::ultrasonic_run()
     // BEGINNING OF ADDED CODE
     if (trigger_start_flag == 0) {
         clock_gettime(CLOCK_REALTIME, &trigger_start);
-        if ((uint32_t)(trigger_start.tv_nsec - trigger_end.tv_nsec) > 50000000) { // Suggests over a 50ms measurement cycle.
+        if ((uint32_t)(trigger_start.tv_nsec - trigger_end.tv_nsec) > 48000000) { // Suggests over a 50ms measurement cycle.
             hal.gpio->write(TRIGGER, 1);
+	    start_left_timer();
+	    start_right_timer();
             trigger_start_flag = 1;
             clock_gettime(CLOCK_REALTIME, &trigger_start);
         }
@@ -138,8 +147,10 @@ void Copter::ultrasonic_run()
     }
     else {
         clock_gettime(CLOCK_REALTIME, &trigger_end);
-        if ((uint32_t)(trigger_end.tv_nsec - trigger_start.tv_nsec) > 10000) {
+        if ((uint32_t)(trigger_end.tv_nsec - trigger_start.tv_nsec) > 2000000) {
             hal.gpio->write(TRIGGER, 0);
+	    end_left_timer();
+	    end_right_timer();
             trigger_start_flag = 0;
             clock_gettime(CLOCK_REALTIME, &trigger_end);
         }
@@ -163,12 +174,13 @@ void Copter::ultrasonic_run()
     // As of now, just move at a constant rate until it faces the US sensor
     float target_yaw_rate;
 
+    cout << timer_ns.first << " " << timer_ns.second << endl;
     if (timer_ns.first > timer_ns.second) {
-        cout << "TARGET YAW RATE POSITIVE" << endl;
+        //cout << "TARGET YAW RATE POSITIVE" << endl;
         target_yaw_rate = POS_DEG; // If left echo > right echo, needs to bring left sensor closer, i.e. cw
     }
     else if (timer_ns.first < timer_ns.second) {
-        cout << "TARGET YAW RATE NEGATIVE" << endl;
+        //cout << "TARGET YAW RATE NEGATIVE" << endl;
         target_yaw_rate = NEG_DEG; // If right echo > left echo, needs to bring right sensor closer, i.e. ccw
     }
 
