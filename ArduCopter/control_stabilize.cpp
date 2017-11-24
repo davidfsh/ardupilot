@@ -1,5 +1,5 @@
 #include "Copter.h"
-
+#include <iostream>
 /*
  * Init and run calls for stabilize flight mode
  */
@@ -50,7 +50,7 @@ void Copter::stabilize_run()
 
     // get pilot's desired throttle
     pilot_throttle_scaled = get_pilot_desired_throttle(channel_throttle->get_control_in());
-
+	std::cout << channel_roll->get_control_in() << " " << channel_pitch->get_control_in() << " " << channel_throttle->get_control_in() << std::endl;
     // call attitude controller
     attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());
 

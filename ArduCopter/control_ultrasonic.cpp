@@ -214,15 +214,15 @@ void Copter::ultrasonic_run()
     // get pilot desired climb rate
     float target_climb_rate = 50.0;
     target_climb_rate = constrain_float(target_climb_rate, -g.pilot_velocity_z_max, g.pilot_velocity_z_max);
-	cout << "target climb rate: " << target_climb_rate << endl;
+	//cout << "target climb rate: " << target_climb_rate << endl;
 
 #if FRAME_CONFIG == HELI_FRAME
     // helicopters are held on the ground until rotor speed runup has finished
     bool takeoff_triggered = (ap.land_complete && (target_climb_rate > 0.0f) && motors->rotor_runup_complete());
 #else
-	set_land_complete(true);
+	//set_land_complete(true);
     bool takeoff_triggered = ap.land_complete && (target_climb_rate > 0.0f);
-	cout << "takeoff triggered: " << takeoff_triggered << endl;
+	//cout << "takeoff triggered: " << takeoff_triggered << endl;
 #endif
 
     // Alt Hold State Machine Determination
@@ -277,7 +277,7 @@ void Copter::ultrasonic_run()
 
         // get avoidance adjusted climb rate
         target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
-
+	cout << target_climb_rate << endl;
         // call attitude controller
         attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());
 
