@@ -158,23 +158,23 @@ void Copter::ultrasonic_run()
 
     // If any of the timers' echo values are >= 45ms, then the beacon has been disconnected.
     // Drop throttle and exit.
-    if (timer_ns.first >= 45000000 || timer_ns.second >= 45000000) {
-        motors->set_desired_spool_state(AP_Motors::DESIRED_SPIN_WHEN_ARMED);
-        // multicopters do not stabilize roll/pitch/yaw when disarmed
-        attitude_control->set_throttle_out_unstabilized(100,true,g.throttle_filt); // TODO: Ensure that this will not drop the drone
+    //if (timer_ns.first >= 45000000 || timer_ns.second >= 45000000) {
+    //    motors->set_desired_spool_state(AP_Motors::DESIRED_SPIN_WHEN_ARMED);
+    //    // multicopters do not stabilize roll/pitch/yaw when disarmed
+    //    attitude_control->set_throttle_out_unstabilized(100,true,g.throttle_filt); // TODO: Ensure that this will not drop the drone
 
-        // disarm when the landing detector says we've landed
-        if (ap.land_complete) {
-            init_disarm_motors();
-        }
-        return;
-    }
+    //    // disarm when the landing detector says we've landed
+    //    if (ap.land_complete) {
+    //        init_disarm_motors();
+    //    }
+    //    return;
+    //}
 
     // Calculate what direction the drone should be moving based on timer values.
     // As of now, just move at a constant rate until it faces the US sensor
     float target_yaw_rate;
 
-    cout << timer_ns.first << " " << timer_ns.second << endl;
+    //cout << timer_ns.first << " " << timer_ns.second << endl;
     if (timer_ns.first > timer_ns.second) {
         //cout << "TARGET YAW RATE POSITIVE" << endl;
         target_yaw_rate = POS_DEG; // If left echo > right echo, needs to bring left sensor closer, i.e. cw
@@ -198,6 +198,7 @@ void Copter::ultrasonic_run()
         // Subtract 4ms (4000us) for the consistent delay
         uint16_t distance = ((timer_us - 4000) * 340) / 10000;
 
+	cout << distance << endl;
         if (distance < (DISTANCE - DIST_VAR)) {
             target_pitch = NEG_DEG;
         }
@@ -211,24 +212,32 @@ void Copter::ultrasonic_run()
 
 
     // get pilot desired climb rate
-    float target_climb_rate = get_pilot_desired_climb_rate(channel_throttle->get_control_in());
+    float target_climb_rate = 50.0;
     target_climb_rate = constrain_float(target_climb_rate, -g.pilot_velocity_z_max, g.pilot_velocity_z_max);
+	cout << "target climb rate: " << target_climb_rate << endl;
 
 #if FRAME_CONFIG == HELI_FRAME
     // helicopters are held on the ground until rotor speed runup has finished
     bool takeoff_triggered = (ap.land_complete && (target_climb_rate > 0.0f) && motors->rotor_runup_complete());
 #else
+	set_land_complete(true);
     bool takeoff_triggered = ap.land_complete && (target_climb_rate > 0.0f);
+	cout << "takeoff triggered: " << takeoff_triggered << endl;
 #endif
 
     // Alt Hold State Machine Determination
     if (!motors->armed() || !motors->get_interlock()) {
+	cout << "if" << endl;
         althold_state = AltHold_MotorStopped;
     } else if (takeoff_state.running || takeoff_triggered) {
+	cout << "else if 1" << endl;
         althold_state = AltHold_Takeoff;
     } else if (!ap.auto_armed || ap.land_complete) {
+	cout << "else if 2" << endl;
+	cout << !ap.auto_armed << " " << ap.land_complete  << " " << takeoff_triggered << endl;
         althold_state = AltHold_Landed;
     } else {
+	cout << "else" << endl;
         althold_state = AltHold_Flying;
     }
 
